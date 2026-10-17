@@ -1,0 +1,59 @@
+<UserControl x:Class="IslandDesk.Views.SystemDashboard"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="clr-namespace:IslandDesk.Controls" Focusable="False">
+    <Grid x:Name="Body">
+        <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="0"/><RowDefinition Height="0"/><RowDefinition Height="8"/><RowDefinition Height="184"/><RowDefinition Height="8"/><RowDefinition Height="72"/></Grid.RowDefinitions>
+        <StackPanel VerticalAlignment="Center" DataContext="{Binding Device}">
+            <TextBlock Text="{Binding ComputerName}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding Motherboard}" ToolTip="{Binding Motherboard}" FontSize="10.5" Foreground="{DynamicResource Secondary}" Margin="4,4,4,0" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+        </StackPanel>
+        <Border x:Name="BatteryCard" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Padding="12,10" DataContext="{Binding Battery}">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Path Data="M1,1 L13,1 13,9 1,9 Z M14,3 L15,3 15,7 14,7" Width="15" Height="9" Stretch="Uniform" Stroke="{DynamicResource Secondary}" StrokeThickness="1" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="BATTERY" Foreground="{DynamicResource Secondary}" FontSize="10" FontWeight="Medium"/>
+                </StackPanel>
+                <Grid Grid.Row="1" Margin="0,3,0,3">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Value}" FontSize="23" FontWeight="Medium" Foreground="{DynamicResource Primary}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,0,0">
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Secondary}" FontSize="11" HorizontalAlignment="Right"/>
+                        <TextBlock Text="{Binding Remaining}" Foreground="{DynamicResource Muted}" FontSize="10" HorizontalAlignment="Right" Margin="0,3,0,0">
+                            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Remaining}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+                <ProgressBar Grid.Row="2" Value="{Binding Progress, Mode=OneWay}" AutomationProperties.Name="Battery charge">
+                    <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource UsageBar}"><Style.Triggers><DataTrigger Binding="{Binding HasPercentage}" Value="False"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers></Style></ProgressBar.Style>
+                </ProgressBar>
+            </Grid>
+        </Border>
+        <Grid x:Name="Metrics" Grid.Row="4" DataContext="{Binding Usage}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="88"/><RowDefinition Height="8"/><RowDefinition Height="88"/></Grid.RowDefinitions>
+            <ui:MetricCard x:Name="CpuCard" Label="CPU" Value="{Binding CpuText}" Progress="{Binding CpuProgress}" Detail="{Binding CpuName}"/>
+            <ui:MetricCard x:Name="GpuCard" Grid.Column="2" Label="GPU" Value="{Binding GpuText}" Progress="{Binding GpuProgress}" Detail="{Binding GpuName}"/>
+            <ui:MetricCard x:Name="RamCard" Grid.Row="2" Label="RAM" Value="{Binding MemoryText}" Progress="{Binding MemoryProgress}" Detail="{Binding MemoryDetail}"/>
+            <ui:MetricCard x:Name="DiskCard" Grid.Row="2" Grid.Column="2" Label="{Binding DiskLabel}" Value="{Binding DiskText}" Progress="{Binding DiskProgress}" Detail="{Binding DiskDetail}"/>
+        </Grid>
+        <Border x:Name="NetworkCard" Grid.Row="6" Style="{StaticResource Card}" Padding="12,10" DataContext="{Binding Usage}">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <TextBlock Text="NETWORK" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource Secondary}"/>
+                <TextBlock Grid.Column="1" Text="{Binding NetworkDetail}" TextTrimming="CharacterEllipsis" ToolTip="{Binding NetworkDetail}" FontSize="10" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right" MaxWidth="170"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                    <TextBlock Text="↓" FontSize="14" Foreground="{DynamicResource Muted}" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding DownloadText}" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource Primary}" AutomationProperties.Name="Download speed"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+                    <TextBlock Text="↑" FontSize="14" Foreground="{DynamicResource Muted}" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding UploadText}" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource Primary}" AutomationProperties.Name="Upload speed"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+

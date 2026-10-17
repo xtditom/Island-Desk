@@ -1,0 +1,17 @@
+<UserControl x:Class="IslandDesk.Controls.PlaybackTimeline"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="clr-namespace:IslandDesk.Controls" Focusable="False">
+ <Border Background="Transparent" Padding="12,3">
+  <Grid>
+   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid x:Name="SeekArea" Background="Transparent" MinHeight="16" MouseLeftButtonDown="Seek_Down" MouseMove="Seek_Move" MouseLeftButtonUp="Seek_Up" LostMouseCapture="Seek_LostCapture">
+    <ui:PlaybackBar x:Name="Bar" Foreground="{DynamicResource MusicTimelineBrush}" IsHitTestVisible="False"/>
+   </Grid>
+   <Grid x:Name="Timestamps" Grid.Row="1" Height="14" IsHitTestVisible="False">
+    <TextBlock x:Name="Elapsed" FontSize="9" Foreground="{DynamicResource Secondary}" Text="—"/>
+    <TextBlock x:Name="Total" FontSize="9" Foreground="{DynamicResource Secondary}" HorizontalAlignment="Right" Text="—"/>
+   </Grid>
+  </Grid>
+ </Border>
+</UserControl>
+

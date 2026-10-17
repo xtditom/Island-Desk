@@ -1,0 +1,15 @@
+<UserControl x:Class="IslandDesk.Views.MainDashboard"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="clr-namespace:IslandDesk.Controls" Focusable="False">
+    <Grid x:Name="Body">
+        <Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="8"/><RowDefinition Height="102"/><RowDefinition Height="8"/><RowDefinition Height="48"/></Grid.RowDefinitions>
+        <Border x:Name="ClockSection" Style="{StaticResource Card}">
+            <ui:ClockDisplay Text="{Binding Clock.Time}" FontSize="35" Foreground="{DynamicResource Primary}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
+        </Border>
+        <ui:MediaPlayerCard x:Name="MediaSection" Grid.Row="2" DataContext="{Binding Media}"/>
+        <ui:VolumeCard x:Name="VolumeSection" Grid.Row="4" DataContext="{Binding Volume}"/>
+    </Grid>
+</UserControl>
+

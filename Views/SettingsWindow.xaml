@@ -1,0 +1,160 @@
+<Window x:Class="IslandDesk.Views.SettingsWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+ Title="IslandDesk Settings" Width="680" Height="660" MinWidth="620" MinHeight="480"
+ WindowStyle="None" ResizeMode="CanResize" ShowInTaskbar="True" ShowActivated="True"
+ WindowStartupLocation="CenterScreen" Background="{DynamicResource SettingsSurface}" Foreground="{DynamicResource Primary}"
+ FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" Closing="Window_Closing">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="54" ResizeBorderThickness="5" GlassFrameThickness="0" CornerRadius="14"/></shell:WindowChrome.WindowChrome>
+    <Window.Resources><ResourceDictionary Source="../Themes/SettingsTheme.xaml"/></Window.Resources>
+    <Border BorderBrush="{DynamicResource WindowBorder}" BorderThickness="1" CornerRadius="14" Padding="24,0,24,18">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="66"/><RowDefinition Height="*"/><RowDefinition Height="54"/></Grid.RowDefinitions>
+        <Grid>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="IslandDesk" FontWeight="SemiBold" FontSize="16"/><TextBlock Text=" / Settings" Foreground="{DynamicResource Secondary}" FontSize="16"/></StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <ComboBox x:Name="QuickThemePicker" Width="32" MinWidth="0" Height="32" Margin="0,0,8,0"
+                          ItemsSource="{Binding ThemeOptions}" SelectedValuePath="Mode" SelectedValue="{Binding ThemeMode}"
+                          ToolTip="Theme" AutomationProperties.Name="Quick theme selector">
+                    <ComboBox.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal">
+                        <Path Data="{Binding Icon}" Width="15" Height="15" Stretch="Uniform" Stroke="{DynamicResource Primary}" StrokeThickness="1.2" StrokeLineJoin="Round" Margin="0,0,9,0"/>
+                        <TextBlock Text="{Binding Label}"/>
+                    </StackPanel></DataTemplate></ComboBox.ItemTemplate>
+                    <ComboBox.Template><ControlTemplate TargetType="ComboBox"><Grid>
+                        <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ClickMode="Press">
+                            <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="ThemeButton" Background="Transparent" CornerRadius="8">
+                                    <Path Data="{Binding SelectedItem.Icon, RelativeSource={RelativeSource AncestorType=ComboBox}}" Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource ControlForeground}" StrokeThickness="1.2" StrokeLineJoin="Round"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ThemeButton" Property="Background" Value="{DynamicResource ControlHover}"/></Trigger>
+                                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="ThemeButton" Property="Background" Value="{DynamicResource ControlSelected}"/></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate></ToggleButton.Template>
+                        </ToggleButton>
+                        <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" HorizontalOffset="-100" AllowsTransparency="True" Focusable="False">
+                            <Border Background="{DynamicResource PopupSurface}" BorderBrush="{DynamicResource PopupBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="132">
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                            </Border>
+                        </Popup>
+                    </Grid></ControlTemplate></ComboBox.Template>
+                </ComboBox>
+                <Button Width="30" Content="−" ToolTip="Minimize" AutomationProperties.Name="Minimize Settings" Click="Minimize_Click"/>
+                <Button Width="30" Margin="6,0,0,0" Content="×" ToolTip="Close" AutomationProperties.Name="Close Settings" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+        <TabControl x:Name="Categories" Grid.Row="1" TabStripPlacement="Left" Background="Transparent" BorderThickness="0">
+            <TabItem Header="General"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Make it yours" Style="{StaticResource SectionTitle}"/><TextBlock Text="A quiet companion, on your terms." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <TextBlock Text="Island title" Margin="0,10,0,8"/>
+                    <TextBox x:Name="TitleInput" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" TextChanged="Title_TextChanged" AutomationProperties.Name="Island title"/>
+                    <TextBlock Text="Up to 20 characters" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,6,0,12"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <CheckBox Content="Launch when Windows starts" IsChecked="{Binding LaunchOnStartup}" IsEnabled="{Binding CanChangeStartup}"/>
+                    <CheckBox Content="Hide during fullscreen apps" IsChecked="{Binding HideInFullscreen}"/>
+                    <CheckBox Content="Always on top" IsChecked="{Binding AlwaysOnTop}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                <Grid Margin="0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Expand with" VerticalAlignment="Center"/><ComboBox Grid.Column="1" ItemsSource="{Binding ExpansionModes}" SelectedItem="{Binding ExpansionMode}" AutomationProperties.Name="Expansion mode"/>
+                </Grid>
+                <Grid Margin="0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Collapse with" VerticalAlignment="Center"/><ComboBox Grid.Column="1" ItemsSource="{Binding ExpansionModes}" SelectedItem="{Binding CollapseMode}" AutomationProperties.Name="Collapse mode"/>
+                </Grid>
+                <StackPanel IsEnabled="{Binding CanHoverCollapse}" Margin="0,8">
+                    <Grid><TextBlock Text="Hover collapse delay"/><TextBlock Text="{Binding CollapseDelayMilliseconds, StringFormat={}{0} ms}" HorizontalAlignment="Right" Foreground="{DynamicResource Secondary}"/></Grid>
+                    <Slider Minimum="150" Maximum="600" TickFrequency="25" IsSnapToTickEnabled="True" SmallChange="25" Value="{Binding CollapseDelayMilliseconds}" AutomationProperties.Name="Hover collapse delay"/>
+                </StackPanel>
+                </StackPanel></Border>
+                <TextBlock Text="Choose opening and closing gestures independently. Hover closes after the cursor leaves; click closes from the island's non-interactive background." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="11"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="Appearance"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Quiet by design" Style="{StaticResource SectionTitle}"/><TextBlock Text="Fine-tune the surface and motion. Changes are live." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><Grid Margin="0,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Theme" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="ThemePicker" Grid.Column="1" MinWidth="150" ItemsSource="{Binding ThemeOptions}"
+                        SelectedValuePath="Mode" SelectedValue="{Binding ThemeMode}" AutomationProperties.Name="Theme">
+                        <ComboBox.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal">
+                            <Path Data="{Binding Icon}" Width="15" Height="15" Stretch="Uniform" Stroke="{DynamicResource Primary}" StrokeThickness="1.2" StrokeLineJoin="Round" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                        </StackPanel></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid></Border>
+                <StackPanel x:Name="AppearanceExtras"/>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel Margin="0,10">
+                    <Grid><TextBlock Text="Surface opacity"/><TextBlock Text="{Binding SurfaceOpacity, StringFormat={}{0:0}%}" HorizontalAlignment="Right" Foreground="{DynamicResource Secondary}"/></Grid>
+                    <Slider Minimum="60" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding SurfaceOpacity}" AutomationProperties.Name="Surface opacity"/>
+                    <TextBlock Text="Text and icons stay opaque. Light surfaces use a higher opacity for readability." FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel Margin="0,10">
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Animation style" VerticalAlignment="Center"/><ComboBox Grid.Column="1" ItemsSource="{Binding AnimationStyles}" SelectedItem="{Binding AnimationStyle}" AutomationProperties.Name="Animation style"/></Grid>
+                    <Grid Margin="0,20,0,0"><TextBlock Text="Animation speed"/><TextBlock Text="{Binding AnimationSpeed, StringFormat={}{0:0.0}×}" HorizontalAlignment="Right" Foreground="{DynamicResource Secondary}"/></Grid>
+                    <Slider Minimum="0.5" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" Value="{Binding AnimationSpeed}" AutomationProperties.Name="Animation speed"/>
+                    <TextBlock Text="0.5× is slower · 2× is faster. Instant skips transitions." FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+                    <Grid Margin="0,20,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="Animation Frame Rate" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="FrameRatePicker" Grid.Column="1" MinWidth="170" ItemsSource="{Binding FrameRateOptions}"
+                                  SelectedItem="{Binding SelectedFrameRate}" AutomationProperties.Name="Animation Frame Rate">
+                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
+                            <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <Setter Property="IsEnabled" Value="{Binding IsAvailable}"/>
+                                <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></Style.Triggers>
+                            </Style></ComboBox.ItemContainerStyle>
+                        </ComboBox>
+                    </Grid>
+                    <TextBlock Text="{Binding RefreshRateDescription}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
+                    <TextBlock Text="Animation target only; Windows may render fewer frames." FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,4,0,0"/>
+                </StackPanel></Border>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="Clock"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Your time" Style="{StaticResource SectionTitle}"/><TextBlock Text="One format across the pill and both dashboards." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <CheckBox Content="Use 24-hour time" IsChecked="{Binding Use24Hour}"/>
+                    <CheckBox Content="Show seconds" IsChecked="{Binding ShowSeconds}"/>
+                </StackPanel></Border>
+                <TextBlock Text="With seconds off, the clock wakes only at minute boundaries. Hidden clocks stop updating." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="Position"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Find its place" Style="{StaticResource SectionTitle}"/><TextBlock Text="Choose an alignment, then fine-tune its position." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><Grid Margin="0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Horizontal alignment" VerticalAlignment="Center"/><ComboBox Grid.Column="1" ItemsSource="{Binding Alignments}" SelectedItem="{Binding Alignment}" AutomationProperties.Name="Horizontal alignment"/>
+                </Grid></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <CheckBox Content="Use monitor working area" IsChecked="{Binding UseWorkingArea}"/>
+                    <StackPanel Margin="0,4,0,10">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><TextBlock Text="X Offset (pixels)" VerticalAlignment="Center"/>
+                            <TextBox x:Name="XOffsetInput" Grid.Column="1" Text="{Binding XOffset, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" AutomationProperties.Name="X Offset in pixels" ToolTip="−10000 to +10000 physical pixels"/>
+                        </Grid>
+                        <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><TextBlock Text="Y Offset (pixels)" VerticalAlignment="Center"/>
+                            <TextBox x:Name="YOffsetInput" Grid.Column="1" Text="{Binding YOffset, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" AutomationProperties.Name="Y Offset in pixels" ToolTip="−10000 to +10000 physical pixels"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel></Border>
+                <TextBlock Text="Working area automatically accounts for reserved desktop space. Offsets work with either mode: positive X moves right, positive Y moves down; negative values move left or up. Use zero for the base position. Offsets use physical pixels and stay within monitor bounds." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="Widgets"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Only what you need" Style="{StaticResource SectionTitle}"/><TextBlock Text="Hidden sections leave no gaps. Disabled sensors stop sampling." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <TextBlock Text="HOME" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                    <CheckBox Content="Clock" IsChecked="{Binding HomeClock}"/><CheckBox Content="Media player" IsChecked="{Binding HomeMedia}"/><CheckBox Content="Volume controls" IsChecked="{Binding HomeVolume}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <TextBlock Text="SYSTEM" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                    <CheckBox Content="Battery" IsChecked="{Binding Battery}"/><CheckBox Content="CPU" IsChecked="{Binding Cpu}"/><CheckBox Content="GPU" IsChecked="{Binding Gpu}"/><CheckBox Content="RAM" IsChecked="{Binding Ram}"/><CheckBox Content="Disk" IsChecked="{Binding Disk}"/><CheckBox Content="Network" IsChecked="{Binding Network}"/>
+                </StackPanel></Border>
+                <TextBlock Text="Media events still support the collapsed music pill. Expanded wheel volume remains available even when its card is hidden." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="11"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem x:Name="MediaSettingsTab" Header="Media Player"/>
+            <TabItem x:Name="MusicColorsTab" Header="Music Colors"/>
+            <TabItem x:Name="EqualizerTab" Header="Frequency Bar"/>
+        </TabControl>
+        <Grid Grid.Row="2" Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <Button x:Name="RestoreButton" Grid.Column="1" Content="Restore Defaults" Width="120" Background="{DynamicResource ControlSelected}" Click="Restore_Click"/>
+        </Grid>
+    </Grid></Border>
+</Window>
+

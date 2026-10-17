@@ -1,0 +1,14 @@
+<UserControl x:Class="IslandDesk.Controls.ClockDisplay"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Name="Clock" Focusable="False" IsHitTestVisible="False">
+    <StackPanel>
+        <TextBlock Text="{Binding Text, ElementName=Clock}" FontSize="{Binding FontSize, ElementName=Clock}"
+                   Foreground="{Binding Foreground, ElementName=Clock}" FontWeight="Medium"/>
+        <TextBlock Text="{Binding Caption, ElementName=Clock}" Foreground="{DynamicResource Muted}" FontSize="10" Margin="0,2,0,0">
+            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers>
+                <DataTrigger Binding="{Binding Caption, ElementName=Clock}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+            </Style.Triggers></Style></TextBlock.Style>
+        </TextBlock>
+    </StackPanel>
+</UserControl>
+

@@ -1,0 +1,61 @@
+<UserControl x:Class="IslandDesk.Controls.IslandHeader"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="clr-namespace:IslandDesk.Controls" Focusable="False">
+    <Grid Background="Transparent" Grid.IsSharedSizeScope="True" Margin="2,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="HeaderSide"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="HeaderSide"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+        <Button x:Name="HomeTab" Width="30" Height="30" Margin="0,0,4,0" ToolTip="Home dashboard" AutomationProperties.Name="Home dashboard"
+                MouseEnter="Home_MouseEnter" Click="Home_Click">
+            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource ControlButton}">
+                <Setter Property="Background" Value="{DynamicResource ControlSelected}"/>
+                <Style.Triggers><DataTrigger Binding="{Binding IsSystem}" Value="True"><Setter Property="Background" Value="Transparent"/></DataTrigger></Style.Triggers>
+            </Style></Button.Style>
+            <Path Width="15" Height="15" Stretch="Uniform" Stroke="{DynamicResource Secondary}" StrokeThickness="1.3"
+                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Data="M 1,8 L 8,2 15,8 M 3,7 L 3,15 6,15 6,10 10,10 10,15 13,15 13,7"/>
+        </Button>
+        <Button x:Name="SystemTab" Width="30" Height="30" ToolTip="System dashboard" AutomationProperties.Name="System dashboard"
+                MouseEnter="System_MouseEnter" Click="System_Click">
+            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource ControlButton}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Style.Triggers><DataTrigger Binding="{Binding IsSystem}" Value="True"><Setter Property="Background" Value="{DynamicResource ControlSelected}"/></DataTrigger></Style.Triggers>
+            </Style></Button.Style>
+            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource Secondary}" StrokeThickness="1.2" StrokeLineJoin="Round"
+                  Data="M 4,4 L 14,4 14,14 4,14 Z M 7,7 L 11,7 11,11 7,11 Z M 6,1 L 6,4 M 9,1 L 9,4 M 12,1 L 12,4 M 6,14 L 6,17 M 9,14 L 9,17 M 12,14 L 12,17 M 1,6 L 4,6 M 1,9 L 4,9 M 1,12 L 4,12 M 14,6 L 17,6 M 14,9 L 17,9 M 14,12 L 17,12"/>
+        </Button>
+        <Button Style="{StaticResource ControlButton}" Width="30" Height="30" Margin="4,0,0,0"
+                ToolTip="Settings" AutomationProperties.Name="Settings" Click="Settings_Click">
+            <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+        </Button>
+        </StackPanel>
+        <Button x:Name="MainTab" Grid.Column="1" Style="{StaticResource ControlButton}" Width="Auto" Height="30" Margin="3,0" Padding="6,0" HorizontalAlignment="Stretch"
+                ToolTip="Click to rename" AutomationProperties.Name="Rename island" Click="Title_Click">
+            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="12" FontWeight="SemiBold"/>
+        </Button>
+        <!-- Hidden content still participates in measurement, keeping both tabs stable.
+             Equal Auto side columns keep the customizable title centered. -->
+        <Grid Grid.Column="2" Height="40" HorizontalAlignment="Right">
+        <StackPanel x:Name="HomeDate" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers>
+                <DataTrigger Binding="{Binding IsSystem}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger>
+            </Style.Triggers></Style></StackPanel.Style>
+            <TextBlock Text="{Binding Clock.Weekday}" FontSize="10.5" FontWeight="Medium" Foreground="{DynamicResource Primary}" HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding Clock.Date}" FontSize="10" Foreground="{DynamicResource Primary}" Opacity="0.78" Margin="0,3,0,0" HorizontalAlignment="Right"/>
+        </StackPanel>
+        <TextBlock x:Name="SystemClock" Text="{Binding Clock.Time}" FontSize="16" FontWeight="Medium"
+                   Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource Primary}"
+                   HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock.Style><Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Hidden"/>
+                <Style.Triggers><DataTrigger Binding="{Binding IsSystem}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+            </Style></TextBlock.Style>
+        </TextBlock>
+        </Grid>
+    </Grid>
+</UserControl>
+

@@ -1,0 +1,14 @@
+<UserControl x:Class="IslandDesk.Controls.MediaArtwork"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Name="Art" Focusable="False" IsHitTestVisible="False">
+    <Grid>
+        <Border Background="{DynamicResource ArtworkSurface}" CornerRadius="{Binding Radius, ElementName=Art}"/>
+        <Path Width="13" Height="15" Stretch="Uniform" Stroke="{DynamicResource ArtworkIcon}" StrokeThickness="1.6"
+              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+              Data="M 6,13 L 6,3 14,1 14,11 M 6,13 C 6,17 0,17 0,14 C 0,11 6,10 6,13 M 14,11 C 14,15 8,15 8,12 C 8,9 14,8 14,11"/>
+        <Border CornerRadius="{Binding Radius, ElementName=Art}">
+            <Border.Background><ImageBrush ImageSource="{Binding Source, ElementName=Art}" Stretch="UniformToFill"/></Border.Background>
+        </Border>
+    </Grid>
+</UserControl>
+
