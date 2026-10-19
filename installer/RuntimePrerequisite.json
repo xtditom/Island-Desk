@@ -1,7 +1,21 @@
 {
   "Version": "10.0.13",
-  "Url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-x64.exe",
-  "Sha512": "adaf5e06b66b145848f3a994b51ea1590d19a5c02f6e7c5899ed896bbdb020af6386d2eaef613034d697388adaf48aa8c3291343f0bbb5f8e62e37aff9564a00",
-  "Sha256": "F5F0268B3D89EC3B9EB952B620330360B35C63593EAD45816AEB26E934A4B7B6",
-  "MetadataUrl": "https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json"
+  "MetadataUrl": "https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json",
+  "Architectures": {
+    "x64": {
+      "Url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-x64.exe",
+      "Sha512": "adaf5e06b66b145848f3a994b51ea1590d19a5c02f6e7c5899ed896bbdb020af6386d2eaef613034d697388adaf48aa8c3291343f0bbb5f8e62e37aff9564a00",
+      "Sha256": "F5F0268B3D89EC3B9EB952B620330360B35C63593EAD45816AEB26E934A4B7B6"
+    },
+    "x86": {
+      "Url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-x86.exe",
+      "Sha512": "298ba89ac8c1cb18f363c82a44284cfeafa02667b1b40bba39a7fe1900c57c22545383e6d16c19efcfcd29388188f71cac4de6104e261abce91f5a0a4d1b8457",
+      "Sha256": "F241CF11D6C0151A0B0EEE3F02DA4D6A6EF9E21E7D54349056E2D65E6FFB0D73"
+    },
+    "arm64": {
+      "Url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-arm64.exe",
+      "Sha512": "399775427df648920cb406e5a42a0847bc4dca93b0dfcb6a7526198dd8356f23e4a87bcae03675f615f6cb58eb2b8e10edb832553ca7011661bf5350e375dee8",
+      "Sha256": "68D651AF6E5F184D121B84201DF93638ED19E71628B50AE0A4F076131D6013BE"
+    }
+  }
 }

@@ -24,13 +24,14 @@ they can contain account names, device information, or media metadata.
 
 ## Requirements
 
-- Windows 10 version 2004 (build 19041) or later.
+- Windows build 19041 or later, on an edition/build supported by .NET 10.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) to build from source.
 - .NET 10 Desktop Runtime for framework-dependent builds; the SDK supplies it on a
   development machine. Offline installers bundle their runtime.
 - [Inno Setup 7](https://jrsoftware.org/isdl.php) to build Windows installers.
 
-The installer scripts target Windows x64. No administrator privileges are needed for
+The v0.3.0 installer scripts support x86, x64 and native ARM64 (via Universal).
+No administrator privileges are needed for
 the widget or its default per-user installation. Installing a missing shared .NET
 Desktop Runtime through the online installer can require administrator approval.
 
@@ -72,17 +73,26 @@ manual DPI, pointer, fullscreen, and installation tests.
 From the repository root, with .NET 10 SDK and Inno Setup 7 installed:
 
 ```powershell
-# Both variants:
+# Both x64 variants (backward-compatible default):
 .\installer\Build-Installer.ps1
-# Or one variant:
-.\installer\Build-Installer.ps1 -Variant Online
-.\installer\Build-Installer.ps1 -Variant Offline
+# All six v0.3.0 installers:
+.\installer\Build-Installer.ps1 -Architecture All -Variant Both
+# Or select architecture and distribution:
+.\installer\Build-Installer.ps1 -Architecture x86 -Variant Online
+.\installer\Build-Installer.ps1 -Architecture Universal -Variant Offline
 ```
 
-| Variant | Output | Runtime |
+| Architecture | Online output | Offline output |
 | --- | --- | --- |
-| Online | `dist/IslandDesk-Setup-Online.exe` | Uses compatible .NET 10 Desktop Runtime x64, or offers a verified Microsoft download |
-| Offline | `dist/IslandDesk-Setup.exe` | Self-contained Windows x64 payload |
+| x64 | `dist/IslandDesk-v0.3.0-win-x64-Online.exe` | `dist/IslandDesk-v0.3.0-win-x64-Offline.exe` |
+| x86 | `dist/IslandDesk-v0.3.0-win-x86-Online.exe` | `dist/IslandDesk-v0.3.0-win-x86-Offline.exe` |
+| Universal | `dist/IslandDesk-v0.3.0-Universal-Online.exe` | `dist/IslandDesk-v0.3.0-Universal-Offline.exe` |
+
+Universal selects native ARM64, x64 or x86 payloads. Offline bundles the matching
+runtime; Online uses a compatible installed .NET 10 Desktop Runtime or offers a
+verified Microsoft download for that architecture. Checksums, a build manifest and
+a packaging report are generated in `dist`. Real-device installation and runtime
+compatibility must be checked before publishing the pre-release.
 
 For a compiler in a custom location, pass `-CompilerPath` with the path to `ISCC.exe`.
 The scripts restore and publish the application, create staging files under `artifacts`,

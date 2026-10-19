@@ -29,15 +29,20 @@ internal static class DeploymentValidation
             }
             Check(RunChild(name) == 0, "A new process can start after the first guard is disposed");
 
-            var publish = Path.Combine(projectRoot, "artifacts", "publish", "win-x64");
+            var staging = Path.Combine(projectRoot, "artifacts", "packaging");
+            var publishedExe = Directory.Exists(staging) ? Directory.EnumerateFiles(staging, "IslandDesk.exe", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(Path.Combine("publish", "win-x64", "Offline", "IslandDesk.exe"), StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault() : null;
+            var publish = publishedExe is null ? Path.Combine(projectRoot, "artifacts", "publish", "win-x64") : Path.GetDirectoryName(publishedExe)!;
             var executable = Path.Combine(publish, "IslandDesk.exe");
-            var installer = Path.Combine(projectRoot, "dist", "IslandDesk-Setup.exe");
+            var version = typeof(SingleInstanceGuard).Assembly.GetName().Version!.ToString(3);
+            var installer = Path.Combine(projectRoot, "dist", $"IslandDesk-v{version}-win-x64-Offline.exe");
             var runtimeConfig = File.ReadAllText(Path.Combine(publish, "IslandDesk.runtimeconfig.json"));
             Check(runtimeConfig.Contains("includedFrameworks") && !runtimeConfig.Contains("\"frameworks\":"),
                 "Published app declares bundled runtime frameworks");
             foreach (var file in new[] { "hostfxr.dll", "hostpolicy.dll", "coreclr.dll", "PresentationFramework.dll", "System.Private.CoreLib.dll" })
                 Check(File.Exists(Path.Combine(publish, file)), "Bundled runtime file: " + file);
-            Check(IsX64(executable) && IsX64(installer), "Application and installer PE files are Windows x64");
+            Check(IsMachine(executable, 0x8664) && IsMachine(installer, 0x014c), "Application is x64 and the Setup launcher is x86");
             Check(FileVersionInfo.GetVersionInfo(executable).ProductName == "IslandDesk", "Published executable has IslandDesk product metadata");
             Check(new FileInfo(installer).Length > 1_000_000, "Compiled installer payload exists and is nonempty");
             Check(StartupRegistration.SelectExecutable(@"C:\development\IslandDesk.exe", executable) == executable,
@@ -88,13 +93,13 @@ internal static class DeploymentValidation
         return child.ExitCode;
     }
 
-    private static bool IsX64(string path)
+    private static bool IsMachine(string path, ushort machine)
     {
         using var reader = new BinaryReader(File.OpenRead(path));
         if (reader.ReadUInt16() != 0x5A4D) return false;
         reader.BaseStream.Position = 0x3C;
         var header = reader.ReadInt32();
         reader.BaseStream.Position = header;
-        return reader.ReadUInt32() == 0x00004550 && reader.ReadUInt16() == 0x8664;
+        return reader.ReadUInt32() == 0x00004550 && reader.ReadUInt16() == machine;
     }
 }

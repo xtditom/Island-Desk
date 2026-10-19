@@ -2,8 +2,8 @@
 #ifndef AppVersion
   #error AppVersion must be supplied by Build-Installer.ps1
 #endif
-#ifndef PublishDir
-  #error PublishDir must be supplied by Build-Installer.ps1
+#ifndef PayloadFiles
+  #error PayloadFiles must be supplied by Build-Installer.ps1
 #endif
 #ifndef AppMutexName
   #error AppMutexName must be supplied by Build-Installer.ps1
@@ -24,9 +24,16 @@ DefaultDirName={localappdata}\Programs\IslandDesk
 DefaultGroupName=IslandDesk
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-SetupArchitecture=x64
+; The setup launcher must run on 32-bit Windows even for Universal.
+SetupArchitecture=x86
+#if PackageArchitecture == "x64"
 ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+#else
+ArchitecturesAllowed=x86compatible
+#endif
+; Deliberately consistent across all packages, including x86 on 64-bit Windows.
+; This preserves v0.2.0's uninstall registry view when switching architectures.
+ArchitecturesInstallIn64BitMode=win64
 MinVersion=10.0.19041
 WizardStyle=modern dynamic
 SetupIconFile=..\Assets\IslandDesk.ico
@@ -36,12 +43,8 @@ AppMutex={#AppMutexName}
 SetupMutex=Local\IslandDesk.Setup.9BBE998F-0584-4868-AFE8-2ED902A95A75
 CloseApplications=no
 RestartApplications=no
-OutputDir=..\dist
-#ifdef OnlineInstaller
-OutputBaseFilename=IslandDesk-Setup-Online
-#else
-OutputBaseFilename=IslandDesk-Setup
-#endif
+OutputDir={#InstallerOutputDir}
+OutputBaseFilename={#OutputName}
 Compression=lzma2
 SolidCompression=yes
 
@@ -59,7 +62,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 #ifdef OnlineInstaller
 Source: "Verify-Runtime.ps1"; Flags: dontcopy
 #endif
-Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#include PayloadFiles
 Source: "..\Assets\IslandDesk.ico"; DestDir: "{app}\Assets"; Flags: ignoreversion
 
 [Icons]
@@ -72,14 +75,37 @@ Root: HKCU; Subkey: "Software\IslandDesk\Deployment"; ValueType: string; ValueNa
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Launch IslandDesk"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: CanLaunchApplication
 
-#ifdef OnlineInstaller
 [InstallDelete]
-; Only old runtime-pack assets identified by the self-contained .deps.json.
-; Never a wildcard, never app-specific WinRT dependencies or user preferences.
+; Exact known package files absent from the selected payload. No wildcard cleanup.
 #include CleanupFile
-#endif
 
 [Code]
+function SelectedArchitecture: String;
+begin
+#if PackageArchitecture == "Universal"
+  if IsArm64 then Result := 'arm64'
+  else if IsWin64 then Result := 'x64'
+  else Result := 'x86';
+#else
+  Result := '{#PackageArchitecture}';
+#endif
+end;
+
+function UsePayload(const Architecture: String): Boolean;
+begin
+  Result := SelectedArchitecture = Architecture;
+end;
+
+function CanCleanPayload(const Architecture: String): Boolean;
+var
+  RegisteredExe: String;
+begin
+  Result := UsePayload(Architecture) and
+    RegQueryStringValue(HKCU, 'Software\IslandDesk\Deployment', 'ExecutablePath', RegisteredExe);
+  if Result then
+    Result := CompareText(RegisteredExe, ExpandConstant('{app}\{#AppExe}')) = 0;
+end;
+
 #ifdef OnlineInstaller
 #include "DotNetRuntime.iss"
 #endif
@@ -94,29 +120,6 @@ begin
   Result := True;
 #endif
 end;
-
-#ifdef OnlineInstaller
-var
-  CleanupChecked, CleanupRequired: Boolean;
-
-function MigratingSelfContainedInstallation: Boolean;
-var
-  RegisteredExe: String;
-  RuntimeConfig: AnsiString;
-begin
-  if not CleanupChecked then
-  begin
-    CleanupChecked := True;
-    CleanupRequired := RegQueryStringValue(HKCU, 'Software\IslandDesk\Deployment', 'ExecutablePath', RegisteredExe) and
-      (CompareText(RegisteredExe, ExpandConstant('{app}\{#AppExe}')) = 0);
-    if CleanupRequired then
-      CleanupRequired := LoadStringFromFile(ExpandConstant('{app}\IslandDesk.runtimeconfig.json'), RuntimeConfig);
-    if CleanupRequired then
-      CleanupRequired := Pos('"includedFrameworks"', RuntimeConfig) > 0;
-  end;
-  Result := CleanupRequired;
-end;
-#endif
 
 function IslandDeskRunning: Boolean;
 begin

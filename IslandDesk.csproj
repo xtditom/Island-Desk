@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Product>IslandDesk</Product>
     <Company>IslandDesk</Company>
     <Description>A lightweight Windows desktop island.</Description>
@@ -18,7 +18,7 @@
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
-    <None Update="IslandDesk.settings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="IslandDesk.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <None Remove="Assets\IslandDesk.ico" />
     <Resource Include="Assets\IslandDesk.ico" Condition="Exists('Assets\IslandDesk.ico')" />
   </ItemGroup>
