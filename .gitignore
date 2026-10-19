@@ -56,6 +56,11 @@ preferences.json
 performance-audit-*/
 
 # Historical local audit reports; retain locally without publishing personal data.
+/HOME_GPU_PERFORMANCE.md
+/SECONDARY_WINDOW_ACTIVATION.md
+/STEP18_IMPLEMENTATION.md
+/STEP181_IMPLEMENTATION.md
+/STEP182_IMPLEMENTATION.md
 /ANIMATION_DIAGNOSTICS.md
 /PERFORMANCE_AUDIT.md
 /POLISH.md
