@@ -41,6 +41,8 @@ internal static class Program
         app.DispatcherUnhandledException += (_, e) => { Console.Error.WriteLine(e.Exception); Environment.ExitCode = 1; app.Shutdown(); };
         if (args.Length >= 2 && args[0] == "--fullscreen-provider")
         { FullscreenValidation.RunProvider(app, new nint(long.Parse(args[1]))); return Environment.ExitCode; }
+        if (args.Contains("--step182-live"))
+        { Directory.CreateDirectory(Artifacts); ShelfLiveValidation.Run(app, Artifacts); return Environment.ExitCode; }
         if (args.Contains("--perf"))
         {
             var widget = new MainWindow(enableFullscreenDetection: false);
@@ -80,7 +82,20 @@ internal static class Program
         {
             try
             {
-                if (args.Contains("--performance-audit"))
+                if (args.Contains("--secondary-activation"))
+                { Directory.CreateDirectory(Artifacts); await SecondaryActivationValidation.RunAsync(Artifacts, Check); }
+                else if (args.Contains("--step182"))
+                { Directory.CreateDirectory(Artifacts); await ShelfUxValidation.RunAsync(Artifacts, Check); }
+                else if (args.Contains("--step18"))
+                { Directory.CreateDirectory(Artifacts); await NavigationShelfValidation.RunAsync(Artifacts, Check); }
+                else if (args.Contains("--step18-profile"))
+                { Directory.CreateDirectory(Artifacts); await NavigationShelfValidation.ProfileAsync(Artifacts); }
+                else if (args.Contains("--home-raster-probe")) HomeGpuProfile.ProbeRaster();
+                else if (args.Contains("--home-gpu-check")) await HomeGpuValidation.RunAsync(Check);
+                else if (args.Contains("--home-gpu-profile"))
+                { Directory.CreateDirectory(Artifacts); await HomeGpuProfile.RunAsync(Artifacts, args.Contains("--home-only"),
+                    args.Contains("--max") ? null : 60, args.Contains("--short-track") ? 180 : 600); }
+                else if (args.Contains("--performance-audit"))
                 { Directory.CreateDirectory(Artifacts); await PerformanceAudit.RunAsync(Artifacts); }
                 else if (args.Contains("--clock-lifetime"))
                 { Directory.CreateDirectory(Artifacts); await PerformanceAudit.RecordClockProbeAsync(Artifacts); }
@@ -183,7 +198,9 @@ internal static class Program
             Hover(mainTab, true); Hover(mainTab, false);
             Check(vm.IsSystem, "Title hover leaves navigation unchanged");
             Hover(homeTab, true);
-            Check(!vm.IsSystem && Field<bool>(island, "_isExpanded"), "Home hover switches immediately without collapsing");
+            Check(vm.IsSystem && header.IsNavigationOpen, "Home hover opens navigation without changing the selected dashboard");
+            Hover((Button)header.FindName("HomeItem"), true);
+            Check(vm.IsHome && Field<bool>(island, "_isExpanded"), "Home flyout item hover switches immediately without collapsing");
             Hover(homeTab, false); Hover(systemTab, true);
             Check(vm.IsSystem && Field<bool>(island, "_isExpanded"), "System hover switches immediately without collapsing");
             Check(Field<bool>(vm.Clock, "_timeVisible") && !Field<bool>(vm.Clock, "_dateVisible"), "System header uses existing minute clock scheduling");

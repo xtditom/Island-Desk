@@ -5,7 +5,8 @@
  Title="IslandDesk" Width="106" Height="36" WindowStyle="None" AllowsTransparency="True"
  Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
  ShowActivated="False" Focusable="False" FontFamily="Segoe UI" UseLayoutRounding="True"
- TextOptions.TextFormattingMode="Display" SizeChanged="Window_SizeChanged">
+ TextOptions.TextFormattingMode="Display" SizeChanged="Window_SizeChanged" AllowDrop="True"
+ PreviewDragEnter="ShelfDrag_Enter" PreviewDragOver="ShelfDrag_Over" PreviewDragLeave="ShelfDrag_Leave" PreviewDrop="ShelfDrag_Drop">
     <Grid>
     <ui:IslandShadow x:Name="IslandShadow" Color="{DynamicResource IslandShadowColor}"/>
     <ui:IslandSurface x:Name="IslandSurface" CornerRadius="18" BorderThickness="1" MouseLeftButtonUp="Surface_MouseLeftButtonUp">
@@ -43,6 +44,8 @@
                 <ui:IslandHeader x:Name="Header"/>
                 <views:MainDashboard x:Name="MainDashboard" Grid.Row="2" Height="242" VerticalAlignment="Top"/>
                 <views:SystemDashboard x:Name="SystemDashboard" Grid.Row="2" Height="316" VerticalAlignment="Top" Visibility="Hidden"/>
+                <views:QuickControlsDashboard x:Name="QuickControlsDashboard" Grid.Row="2" VerticalAlignment="Top" Visibility="Hidden"/>
+                <views:FileShelfDashboard x:Name="FileShelfDashboard" Grid.Row="2" VerticalAlignment="Top" Visibility="Hidden"/>
             </Grid>
         </Grid>
     </ui:IslandSurface>

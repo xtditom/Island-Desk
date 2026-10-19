@@ -18,6 +18,8 @@ public partial class SettingsWindow : Window
     {
         _settings = settings;
         InitializeComponent(); DataContext = settings;
+        _settings.SettingsChanged += QuickLayout_Changed;
+        UpdateQuickLayoutEditor();
         NativeWindowTheme.Track(this);
         var pages = new PersonalizationPages(this);
         AppearanceExtras.Children.Add(pages.Appearance());
@@ -25,7 +27,7 @@ public partial class SettingsWindow : Window
         SourceInitialized += (_, _) =>
         { _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle); _source?.AddHook(WindowMessage); };
         Loaded += (_, _) => FitToWorkingArea();
-        Closed += (_, _) => { _closed = true; _source?.RemoveHook(WindowMessage); };
+        Closed += (_, _) => { _closed = true; _settings.SettingsChanged -= QuickLayout_Changed; _source?.RemoveHook(WindowMessage); };
     }
     private nint WindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
@@ -64,6 +66,42 @@ public partial class SettingsWindow : Window
     }
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private string[]? _displayedQuickOrder;
+    private void QuickLayout_Changed(object? sender, EventArgs args) => UpdateQuickLayoutEditor();
+    private void UpdateQuickLayoutEditor()
+    {
+        var order = _settings.Current.QuickControlOrder;
+        if (_displayedQuickOrder is not null && _displayedQuickOrder.SequenceEqual(order)) return;
+        var selected = (QuickControlOrderList.SelectedItem as QuickControlInfo)?.Id;
+        _displayedQuickOrder = order.ToArray();
+        QuickControlOrderList.ItemsSource = order.Select(id => QuickControlLayout.Controls.First(control => control.Id == id)).ToArray();
+        QuickControlOrderList.SelectedIndex = selected is null ? 0 : Math.Max(0, Array.IndexOf(order, selected));
+        UpdateQuickMoveButtons();
+    }
+    private void QuickControlOrder_SelectionChanged(object sender, SelectionChangedEventArgs args) => UpdateQuickMoveButtons();
+    private void UpdateQuickMoveButtons()
+    {
+        if (MoveQuickControlEarlier is null || MoveQuickControlLater is null) return;
+        var index = QuickControlOrderList.SelectedIndex;
+        MoveQuickControlEarlier.IsEnabled = index > 0;
+        MoveQuickControlLater.IsEnabled = index >= 0 && index < QuickControlOrderList.Items.Count - 1;
+    }
+    private void MoveQuickControlEarlier_Click(object sender, RoutedEventArgs args) => MoveQuickControl(-1);
+    private void MoveQuickControlLater_Click(object sender, RoutedEventArgs args) => MoveQuickControl(1);
+    private void MoveQuickControl(int direction)
+    {
+        var order = _settings.Current.QuickControlOrder.ToList();
+        var index = QuickControlOrderList.SelectedIndex;
+        if (index < 0 || index + direction < 0 || index + direction >= order.Count) return;
+        var id = order[index]; order.RemoveAt(index); order.Insert(index + direction, id);
+        _settings.SetQuickControlOrder(order);
+        QuickControlOrderList.ScrollIntoView(QuickControlOrderList.SelectedItem);
+    }
+    private void ResetQuickControlLayout_Click(object sender, RoutedEventArgs args)
+    {
+        if (ConfirmationWindow.Confirm(this, "Reset Quick Controls layout?", "Restore the original order on all Quick Controls pages? Your other IslandDesk preferences will stay the same.", "Reset layout"))
+            _settings.ResetQuickControlLayout();
+    }
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmationWindow.Confirm(this, "Restore defaults", "Restore all IslandDesk preferences and turn off Windows startup?", "Restore")) return;

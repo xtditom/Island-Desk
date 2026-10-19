@@ -138,6 +138,11 @@
             <TabItem Header="Widgets"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
                 <TextBlock Text="Only what you need" Style="{StaticResource SectionTitle}"/><TextBlock Text="Hidden sections leave no gaps. Disabled sensors stop sampling." Style="{StaticResource Description}"/>
                 <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <TextBlock Text="NAVIGATION" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                    <CheckBox Content="Quick Controls tab" IsChecked="{Binding QuickControlsTab}"/>
+                    <CheckBox Content="File Shelf tab" IsChecked="{Binding FileShelfTab}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
                     <TextBlock Text="HOME" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
                     <CheckBox Content="Clock" IsChecked="{Binding HomeClock}"/><CheckBox Content="Media player" IsChecked="{Binding HomeMedia}"/><CheckBox Content="Volume controls" IsChecked="{Binding HomeVolume}"/>
                 </StackPanel></Border>
@@ -146,6 +151,31 @@
                     <CheckBox Content="Battery" IsChecked="{Binding Battery}"/><CheckBox Content="CPU" IsChecked="{Binding Cpu}"/><CheckBox Content="GPU" IsChecked="{Binding Gpu}"/><CheckBox Content="RAM" IsChecked="{Binding Ram}"/><CheckBox Content="Disk" IsChecked="{Binding Disk}"/><CheckBox Content="Network" IsChecked="{Binding Network}"/>
                 </StackPanel></Border>
                 <TextBlock Text="Media events still support the collapsed music pill. Expanded wheel volume remains available even when its card is hidden." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="11"/>
+            </StackPanel></ScrollViewer></TabItem>
+            <TabItem Header="Quick Controls"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0"><StackPanel>
+                <TextBlock Text="Your controls, your order" Style="{StaticResource SectionTitle}"/>
+                <TextBlock Text="Drag cards in the island to rearrange them. Hold over a page arrow to move between pages. You can also select a control here and use the move buttons. Each page holds nine controls." Style="{StaticResource Description}"/>
+                <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                    <ListBox x:Name="QuickControlOrderList" DisplayMemberPath="Name" Height="260" Background="{DynamicResource SettingsCardSurface}" Foreground="{DynamicResource Primary}" BorderBrush="{DynamicResource PopupBorder}" SelectionChanged="QuickControlOrder_SelectionChanged" AutomationProperties.Name="Quick Controls order">
+                        <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                            <Setter Property="Foreground" Value="{DynamicResource Primary}"/><Setter Property="Padding" Value="8,6"/>
+                            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="ItemSurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="5" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ControlHover}"/></Trigger>
+                                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ControlSelected}"/></Trigger>
+                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ItemSurface" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate></Setter.Value></Setter>
+                        </Style></ListBox.ItemContainerStyle>
+                    </ListBox>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button x:Name="MoveQuickControlEarlier" Content="Move Earlier" Width="110" Margin="0,0,8,0" Click="MoveQuickControlEarlier_Click"/>
+                        <Button x:Name="MoveQuickControlLater" Content="Move Later" Width="110" Click="MoveQuickControlLater_Click"/>
+                    </StackPanel>
+                </StackPanel></Border>
+                <Button Content="Reset Layout" Width="120" HorizontalAlignment="Left" Click="ResetQuickControlLayout_Click"/>
+                <TextBlock Text="Restores only the default Quick Controls order. Your other preferences stay the same." Style="{StaticResource Description}"/>
             </StackPanel></ScrollViewer></TabItem>
             <TabItem x:Name="MediaSettingsTab" Header="Media Player"/>
             <TabItem x:Name="MusicColorsTab" Header="Music Colors"/>

@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Runtime.InteropServices;
 using IslandDesk.Themes;
 namespace IslandDesk.Views;
 public partial class RenameWindow : Window
@@ -19,11 +17,6 @@ public partial class RenameWindow : Window
         NativeWindowTheme.Track(this);
         TitleInput.Text = title;
         // An explicitly requested, activatable text-entry tool; the island's styles never change.
-        SourceInitialized += (_, _) =>
-        {
-            var handle = new WindowInteropHelper(this).Handle;
-            SetWindowLong(handle, -20, (GetWindowLong(handle, -20) | 0x80) & ~0x40000);
-        };
         Loaded += (_, _) =>
         {
             if (!_focusInitially) return;
@@ -61,8 +54,4 @@ public partial class RenameWindow : Window
         if (e.Key == Key.Escape) { e.Handled = true; Close(); }
         if (e.Key == Key.Enter) { e.Handled = true; await SaveAsync(); }
     }
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
-    private static extern int GetWindowLong(nint handle, int index);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
-    private static extern int SetWindowLong(nint handle, int index, int value);
 }

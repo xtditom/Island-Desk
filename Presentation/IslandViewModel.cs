@@ -5,7 +5,7 @@ using IslandDesk.Infrastructure;
 
 namespace IslandDesk.Presentation;
 
-internal enum Dashboard { Main, System }
+internal enum Dashboard { Main, System, QuickControls, FileShelf }
 
 internal sealed class IslandViewModel(SystemUsageViewModel usage, MediaViewModel media, VolumeViewModel volume,
     ClockViewModel clock) : ObservableObject
@@ -22,7 +22,11 @@ internal sealed class IslandViewModel(SystemUsageViewModel usage, MediaViewModel
     public Dashboard Dashboard
     {
         get => _dashboard;
-        set { if (_dashboard == value) return; _dashboard = value; Changed(); Changed(nameof(IsSystem)); }
+        set { if (_dashboard == value) return; _dashboard = value; Changed(); Changed(nameof(IsSystem));
+            Changed(nameof(IsHome)); Changed(nameof(IsQuickControls)); Changed(nameof(IsFileShelf)); }
     }
     public bool IsSystem => Dashboard == Dashboard.System;
+    public bool IsHome => Dashboard == Dashboard.Main;
+    public bool IsQuickControls => Dashboard == Dashboard.QuickControls;
+    public bool IsFileShelf => Dashboard == Dashboard.FileShelf;
 }

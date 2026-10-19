@@ -43,6 +43,9 @@ internal sealed record AppSettings
     public bool HomeClock { get; init; } = true;
     public bool HomeMedia { get; init; } = true;
     public bool HomeVolume { get; init; } = true;
+    public bool QuickControlsTab { get; init; } = true;
+    public string[] QuickControlOrder { get; init; } = QuickControlLayout.Normalize(null);
+    public bool FileShelfTab { get; init; } = true;
     public bool Cpu { get; init; } = true;
     public bool Gpu { get; init; } = true;
     public bool Ram { get; init; } = true;
@@ -82,6 +85,8 @@ internal sealed record AppSettings
     public AppSettings Normalize() => this with
     {
         Version = 1, Title = PreferencesStore.NormalizeTitle(Title),
+        QuickControlOrder = QuickControlOrder is not null && QuickControlOrder.SequenceEqual(QuickControlLayout.Normalize(QuickControlOrder))
+            ? QuickControlOrder : QuickControlLayout.Normalize(QuickControlOrder),
         ExpansionMode = NormalizeInteractionMode(ExpansionMode),
         CollapseMode = NormalizeInteractionMode(CollapseMode),
         CollapseDelayMilliseconds = Math.Clamp(CollapseDelayMilliseconds, 150, 600),

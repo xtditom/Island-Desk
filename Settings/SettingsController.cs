@@ -126,6 +126,14 @@ internal sealed partial class SettingsController : ObservableObject, IDisposable
     public bool HomeClock { get => Current.HomeClock; set => Update(Current with { HomeClock = value }); }
     public bool HomeMedia { get => Current.HomeMedia; set => Update(Current with { HomeMedia = value }); }
     public bool HomeVolume { get => Current.HomeVolume; set => Update(Current with { HomeVolume = value }); }
+    public bool QuickControlsTab { get => Current.QuickControlsTab; set => Update(Current with { QuickControlsTab = value }); }
+    public void SetQuickControlOrder(IEnumerable<string> order)
+    {
+        var normalized = QuickControlLayout.Normalize(order);
+        if (!Current.QuickControlOrder.SequenceEqual(normalized)) Update(Current with { QuickControlOrder = normalized });
+    }
+    public void ResetQuickControlLayout() => SetQuickControlOrder(QuickControlLayout.Normalize(null));
+    public bool FileShelfTab { get => Current.FileShelfTab; set => Update(Current with { FileShelfTab = value }); }
     public bool Cpu { get => Current.Cpu; set => Update(Current with { Cpu = value }); }
     public bool Gpu { get => Current.Gpu; set => Update(Current with { Gpu = value }); }
     public bool Ram { get => Current.Ram; set => Update(Current with { Ram = value }); }

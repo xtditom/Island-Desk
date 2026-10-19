@@ -43,7 +43,8 @@ public partial class PlaybackTimeline : UserControl
         Timestamps.Visibility = settings.TimelineTimestamps ? Visibility.Visible : Visibility.Collapsed;
         Bar.RefreshStyle(); Refresh();
     }
-    internal void SetFrameRate(int? fps) { if (_fps == fps) return; _fps = fps; Refresh(); }
+    // Placement also calls this when DPI/ancestor scale changes at the same FPS.
+    internal void SetFrameRate(int? fps) { _fps = fps; Refresh(); }
     private void Refresh()
     {
         _labels.Stop();

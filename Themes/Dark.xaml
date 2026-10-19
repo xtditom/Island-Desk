@@ -6,6 +6,8 @@
     <Color x:Key="ExpandedLowColor">#090A0C</Color>
     <Color x:Key="CardBaseColor">#20242A</Color>
     <Color x:Key="NeutralMusicColor">#D5E0D8</Color>
+    <SolidColorBrush x:Key="DangerSurface" Color="#482B30"/>
+    <SolidColorBrush x:Key="DangerForeground" Color="#FFB4AB"/>
     <SolidColorBrush x:Key="Primary" Color="#F1F3F6"/>
     <SolidColorBrush x:Key="Secondary" Color="#AFB6C0"/>
     <SolidColorBrush x:Key="Muted" Color="#A3ADBA"/>

@@ -8,8 +8,8 @@ internal sealed record VolumeSnapshot(double Percent, bool IsMuted, bool IsAvail
     public static VolumeSnapshot Unavailable { get; } = new(0, false, false);
 }
 
-/// <summary>Event-driven default render endpoint access, serialized on a thread-pool worker.</summary>
-internal sealed class CoreAudioVolumeService
+/// <summary>Event-driven default endpoint access, serialized on a thread-pool worker.</summary>
+internal sealed class CoreAudioVolumeService(int flow = 0, int role = 1)
 {
     private readonly Channel<bool> _changes = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     {
@@ -34,6 +34,13 @@ internal sealed class CoreAudioVolumeService
         _changes.Writer.TryWrite(true);
     }
 
+    public void ToggleMute()
+    {
+        if (_cancellation.IsCancellationRequested) return;
+        Interlocked.Exchange(ref _pendingMute, 2);
+        _changes.Writer.TryWrite(true);
+    }
+
     public Task RunAsync(Func<VolumeSnapshot, Task> publish, CancellationToken cancellationToken)
     {
         _cancellation = cancellationToken;
@@ -50,7 +57,7 @@ internal sealed class CoreAudioVolumeService
             {
                 Interlocked.Exchange(ref _rebind, 1);
                 _changes.Writer.TryWrite(true);
-            });
+            }, flow, role);
             void ReleaseEndpoint()
             {
                 if (endpoint is not null)
@@ -79,7 +86,7 @@ internal sealed class CoreAudioVolumeService
                         if (Interlocked.Exchange(ref _rebind, 0) != 0 || endpoint is null)
                         {
                             ReleaseEndpoint();
-                            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out device));
+                            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(flow, role, out device));
                             var iid = typeof(IEndpointVolume).GUID;
                             Marshal.ThrowExceptionForHR(device.Activate(ref iid, 23, 0, out var instance)); // CLSCTX_ALL
                             endpoint = (IEndpointVolume)instance;
@@ -90,6 +97,11 @@ internal sealed class CoreAudioVolumeService
                         var mute = Interlocked.Exchange(ref _pendingMute, -1);
                         if (!double.IsNaN(volume))
                             Marshal.ThrowExceptionForHR(endpoint.SetMasterVolumeLevelScalar((float)(volume / 100), ref context));
+                        if (mute == 2)
+                        {
+                            Marshal.ThrowExceptionForHR(endpoint.GetMute(out var currentMute));
+                            mute = currentMute ? 0 : 1;
+                        }
                         if (mute >= 0)
                             Marshal.ThrowExceptionForHR(endpoint.SetMute(mute == 1, ref context));
                         Marshal.ThrowExceptionForHR(endpoint.GetMasterVolumeLevelScalar(out var scalar));

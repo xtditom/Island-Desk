@@ -72,14 +72,14 @@ internal sealed class VolumeObserver(Action changed) : IVolumeNotification
 }
 
 [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
-internal sealed class DeviceObserver(Action changed) : IDeviceNotification
+internal sealed class DeviceObserver(Action changed, int flow = 0, int role = 1) : IDeviceNotification
 {
     public int OnDeviceStateChanged(string id, uint state) { changed(); return 0; }
     public int OnDeviceAdded(string id) { changed(); return 0; }
     public int OnDeviceRemoved(string id) { changed(); return 0; }
-    public int OnDefaultDeviceChanged(int flow, int role, string? id)
+    public int OnDefaultDeviceChanged(int changedFlow, int changedRole, string? id)
     {
-        if (flow == 0 && role == 1) changed(); // Render, multimedia role.
+        if (changedFlow == flow && changedRole == role) changed();
         return 0;
     }
     public int OnPropertyValueChanged(string id, PropertyKey key) => 0;

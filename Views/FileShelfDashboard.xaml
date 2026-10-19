@@ -1,0 +1,113 @@
+<UserControl x:Class="IslandDesk.Views.FileShelfDashboard" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:IslandDesk.Views" xmlns:p="clr-namespace:IslandDesk.Presentation"
+ Focusable="False" Height="270" AllowDrop="True" PreviewDragOver="Files_DragOver" Drop="Files_Drop">
+    <UserControl.Resources>
+        <!-- Shared immutable vector data: no shell icon lookups, thumbnails or file reads. -->
+        <Geometry x:Key="FileGlyph">M2,1 L10,1 14,5 14,17 2,17 Z M10,1 L10,5 14,5 M5,9 L11,9 M5,12 L11,12</Geometry>
+        <Geometry x:Key="GridGlyph">M1,1 L7,1 7,7 1,7 Z M11,1 L17,1 17,7 11,7 Z M1,11 L7,11 7,17 1,17 Z M11,11 L17,11 17,17 11,17 Z</Geometry>
+        <Geometry x:Key="LineGlyph">M1,3 L17,3 M1,9 L17,9 M1,15 L17,15</Geometry>
+        <Geometry x:Key="TwoColumnGlyph">M1,1 L7,1 7,17 1,17 Z M11,1 L17,1 17,17 11,17 Z</Geometry>
+        <Style x:Key="FileCard" TargetType="Border">
+            <Setter Property="Height" Value="76"/><Setter Property="Margin" Value="2"/>
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/>
+            <EventSetter Event="MouseLeftButtonDown" Handler="File_MouseDown"/>
+            <EventSetter Event="MouseLeftButtonUp" Handler="File_MouseUp"/>
+            <EventSetter Event="MouseMove" Handler="File_MouseMove"/>
+            <EventSetter Event="LostMouseCapture" Handler="File_LostCapture"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ControlHover}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="FileIcon" TargetType="Path">
+            <Setter Property="Data" Value="{StaticResource FileGlyph}"/><Setter Property="Width" Value="17"/><Setter Property="Height" Value="21"/>
+            <Setter Property="Stretch" Value="Uniform"/><Setter Property="Stroke" Value="{DynamicResource Secondary}"/>
+            <Setter Property="StrokeThickness" Value="1.2"/><Setter Property="StrokeLineJoin" Value="Round"/>
+        </Style>
+        <DataTemplate x:Key="GridFile">
+            <Border Style="{StaticResource FileCard}" ToolTip="{Binding Path}" AutomationProperties.Name="{Binding Name}">
+                <Grid Margin="6"><Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
+                    <Path Style="{StaticResource FileIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextAlignment="Center" FontSize="10" Foreground="{DynamicResource Primary}" VerticalAlignment="Center"/>
+                    <Button HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource ControlButton}" Width="18" Height="18" Click="Remove_Click" ToolTip="Remove reference" AutomationProperties.Name="Remove from shelf"><TextBlock Text="×" FontSize="13"/></Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="LineFile">
+            <Border ToolTip="{Binding Path}" AutomationProperties.Name="{Binding Name}">
+                <Border.Style><Style TargetType="Border" BasedOn="{StaticResource FileCard}"><Setter Property="Height" Value="40"/><Setter Property="Margin" Value="0"/><Setter Property="BorderThickness" Value="0,0,0,1"/><Setter Property="CornerRadius" Value="4"/></Style></Border.Style>
+                <Grid Margin="3,0"><Grid.ColumnDefinitions><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+                    <Path Style="{StaticResource FileIcon}" Width="15" Height="19" HorizontalAlignment="Left"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,4,0"><TextBlock Text="{Binding Name}" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Primary}"/><TextBlock Text="{Binding Details}" FontSize="9" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Secondary}"/></StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ControlButton}" Width="24" Height="26" Click="Reveal_Click" ToolTip="Show in File Explorer" AutomationProperties.Name="Show in File Explorer"><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="11"/></Button>
+                        <Button Style="{StaticResource ControlButton}" Width="24" Height="26" Click="Copy_Click" ToolTip="Copy file path" AutomationProperties.Name="Copy file path"><TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="11"/></Button>
+                        <Button Style="{StaticResource ControlButton}" Width="24" Height="26" Click="Remove_Click" ToolTip="Remove reference" AutomationProperties.Name="Remove from shelf"><TextBlock Text="×" FontSize="14"/></Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="TwoColumnFile">
+            <Border Style="{StaticResource FileCard}" ToolTip="{Binding Path}" AutomationProperties.Name="{Binding Name}">
+                <Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="25"/><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/></Grid.ColumnDefinitions>
+                    <Path Style="{StaticResource FileIcon}" HorizontalAlignment="Left"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,3,0"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="10.5" Foreground="{DynamicResource Primary}"/><TextBlock Text="{Binding SizeText}" FontSize="9" Foreground="{DynamicResource Secondary}" Margin="0,3,0,0"/></StackPanel>
+                    <Button Grid.Column="2" VerticalAlignment="Top" Style="{StaticResource ControlButton}" Width="18" Height="18" Click="Remove_Click" ToolTip="Remove reference" AutomationProperties.Name="Remove from shelf"><TextBlock Text="×" FontSize="13"/></Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <ItemsPanelTemplate x:Key="GridPanel"><UniformGrid Columns="3" Rows="2"/></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="LinePanel"><StackPanel/></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="TwoColumnPanel"><UniformGrid Columns="2" Rows="2"/></ItemsPanelTemplate>
+        <Style x:Key="ShelfClearButton" TargetType="Button" BasedOn="{StaticResource ControlButton}">
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                <Border x:Name="ClearSurface" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ClearSurface" Property="Background" Value="{DynamicResource ControlHover}"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="ClearSurface" Property="Background" Value="{DynamicResource ControlPressed}"/></Trigger>
+                    <DataTrigger Binding="{Binding IsClearArmed, RelativeSource={RelativeSource AncestorType={x:Type views:FileShelfDashboard}}}" Value="True">
+                        <Setter TargetName="ClearSurface" Property="Background" Value="{DynamicResource DangerSurface}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource DangerForeground}"/>
+                    </DataTrigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.3"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </UserControl.Resources>
+    <Border x:Name="ShelfCard" Style="{StaticResource Card}" Padding="10">
+        <Grid><Grid.RowDefinitions><RowDefinition Height="28"/><RowDefinition Height="6"/><RowDefinition Height="160"/><RowDefinition Height="24"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="28"/><ColumnDefinition Width="6"/><ColumnDefinition Width="70"/><ColumnDefinition Width="6"/><ColumnDefinition Width="92"/></Grid.ColumnDefinitions>
+                <TextBlock Text="File Shelf" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Primary}" VerticalAlignment="Center"/>
+                <Button x:Name="ViewButton" Grid.Column="1" Style="{StaticResource ControlButton}" Width="28" Height="26" Click="View_Click" ToolTip="{Binding ViewDescription}" AutomationProperties.Name="{Binding ViewDescription}">
+                    <Path Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource Secondary}" StrokeThickness="1.2" StrokeLineJoin="Round">
+                        <Path.Style><Style TargetType="Path"><Setter Property="Data" Value="{StaticResource GridGlyph}"/><Style.Triggers>
+                            <DataTrigger Binding="{Binding ViewStyle}" Value="{x:Static p:ShelfViewStyle.Line}"><Setter Property="Data" Value="{StaticResource LineGlyph}"/></DataTrigger>
+                            <DataTrigger Binding="{Binding ViewStyle}" Value="{x:Static p:ShelfViewStyle.TwoColumn}"><Setter Property="Data" Value="{StaticResource TwoColumnGlyph}"/></DataTrigger>
+                        </Style.Triggers></Style></Path.Style>
+                    </Path>
+                </Button>
+                <Button x:Name="AddButton" Grid.Column="3" Style="{StaticResource ControlButton}" Width="70" Height="26" Background="{DynamicResource ControlSelected}" IsEnabled="{Binding CanAdd}" Click="Add_Click" AutomationProperties.Name="Add Files"><TextBlock Text="Add Files" FontSize="11"/></Button>
+                <Button x:Name="ClearButton" Grid.Column="5" Style="{StaticResource ShelfClearButton}" Width="92" Height="26" IsEnabled="{Binding HasFiles}" Click="Clear_Click" AutomationProperties.Name="Clear shelf"><TextBlock x:Name="ClearLabel" Text="Clear" FontSize="11"/></Button>
+            </Grid>
+            <Grid Grid.Row="2">
+                <TextBlock x:Name="EmptyMessage" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Secondary}" FontSize="11" VerticalAlignment="Center">
+                    <Run Text="Drop files here"/><LineBreak/><Run Text="Temporary references. Nothing uploaded."/>
+                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasFiles}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <ItemsControl x:Name="Files" ItemsSource="{Binding PageEntries}">
+                    <ItemsControl.Style><Style TargetType="ItemsControl">
+                        <Setter Property="ItemTemplate" Value="{StaticResource GridFile}"/><Setter Property="ItemsPanel" Value="{StaticResource GridPanel}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ViewStyle}" Value="{x:Static p:ShelfViewStyle.Line}"><Setter Property="ItemTemplate" Value="{StaticResource LineFile}"/><Setter Property="ItemsPanel" Value="{StaticResource LinePanel}"/></DataTrigger>
+                            <DataTrigger Binding="{Binding ViewStyle}" Value="{x:Static p:ShelfViewStyle.TwoColumn}"><Setter Property="ItemTemplate" Value="{StaticResource TwoColumnFile}"/><Setter Property="ItemsPanel" Value="{StaticResource TwoColumnPanel}"/></DataTrigger>
+                        </Style.Triggers>
+                    </Style></ItemsControl.Style>
+                </ItemsControl>
+            </Grid>
+            <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="*"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions>
+                <Button x:Name="PreviousButton" Style="{StaticResource ControlButton}" Width="26" Height="22" IsEnabled="{Binding CanPrevious}" Click="Previous_Click" ToolTip="Previous page" AutomationProperties.Name="Previous page"><TextBlock Text="‹" FontSize="17"/></Button>
+                <TextBlock Grid.Column="1" Text="{Binding PageLabel}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource Secondary}"/>
+                <Button x:Name="NextButton" Grid.Column="2" Style="{StaticResource ControlButton}" Width="26" Height="22" IsEnabled="{Binding CanNext}" Click="Next_Click" ToolTip="Next page" AutomationProperties.Name="Next page"><TextBlock Text="›" FontSize="17"/></Button>
+            </Grid>
+            <TextBlock Grid.Row="4" Text="{Binding Status}" TextWrapping="Wrap" FontSize="9" Foreground="{DynamicResource Secondary}" Margin="0,3,0,0"/>
+        </Grid>
+    </Border>
+</UserControl>

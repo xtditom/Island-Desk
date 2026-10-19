@@ -86,6 +86,8 @@ public partial class MainWindow : Window
     private bool _isExpanded;
     private bool _suppressMusicMorphHover;
     private NativePoint _musicMorphPointer;
+    private readonly DispatcherTimer _fileDragLeave;
+    private bool _fileDragActive, _fileDragSeen;
     private (bool Expanded, bool Music, Dashboard Dashboard, bool Visible, double Scale)? _presentationState;
 
     public MainWindow() : this(enableFullscreenDetection: true) { }
@@ -117,14 +119,22 @@ public partial class MainWindow : Window
         MainDashboard.DataContext = null;
         SystemDashboard.DataContext = null;
         _interaction = new(Dispatcher, () => _isExpanded, SetExpanded, new IslandInteractionOptions());
+        _fileDragLeave = new(DispatcherPriority.Input, Dispatcher) { Interval = TimeSpan.FromMilliseconds(150) };
+        _fileDragLeave.Tick += (_, _) => EndFileDrag();
         IslandSurface.MouseEnter += Surface_MouseEnter;
         IslandSurface.MouseMove += Surface_MouseMove;
         IslandSurface.MouseLeave += (_, _) => { _suppressMusicMorphHover = false; _interaction.PointerLeft(); };
         IslandSurface.GotMouseCapture += (_, _) => UpdateInteractionCapture();
         IslandSurface.LostMouseCapture += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Input,
             new Action(UpdateInteractionCapture));
-        Header.SystemRequested += (_, _) => SelectDashboard(Dashboard.System);
         Header.MainRequested += (_, _) => SelectDashboard(Dashboard.Main);
+        Header.NavigationRequested += SelectDashboard;
+        Header.NavigationVisibilityChanged += (_, _) => UpdateInteractionCapture();
+        QuickControlsDashboard.InteractionChanged += (_, _) =>
+        { if (QuickControlsDashboard.IsInteracting) Header.CloseNavigation(); UpdateInteractionCapture(); };
+        QuickControlsDashboard.OrderChanged += order => _settings.SetQuickControlOrder(order);
+        FileShelfDashboard.InteractionChanged += (_, _) =>
+        { if (FileShelfDashboard.IsInteracting) Header.CloseNavigation(); UpdateInteractionCapture(); };
         Header.RenameRequested += (_, _) => RenameTitle();
         Header.SettingsRequested += (_, _) => OpenSettings();
         _settings.SettingsChanged += Settings_Changed;
@@ -164,6 +174,8 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             _isClosed = true;
+            EndFileDrag();
+            Header.CloseNavigation();
             _fullscreenObserver?.Dispose();
             _interaction.Dispose();
             _renameWindow?.Close();
@@ -176,11 +188,13 @@ public partial class MainWindow : Window
             _clock.Dispose();
             _transitions.Dispose();
             _palette.Dispose();
+            QuickControlsDashboard.Dispose();
+            FileShelfDashboard.Dispose();
             _theme.Changed -= Theme_Changed;
             _theme.Dispose();
             _source?.RemoveHook(WindowMessageHook);
         };
-        Deactivated += (_, _) => { if (_settings.Current.AlwaysOnTop) RaiseWithoutActivation(); };
+        Deactivated += (_, _) => { Header.CloseNavigation(); if (_settings.Current.AlwaysOnTop) RaiseWithoutActivation(); };
         _horizontalCenter = SystemParameters.PrimaryScreenWidth / 2;
         PositionAtTopCenter();
     }
@@ -255,7 +269,7 @@ public partial class MainWindow : Window
         for (var source = e.OriginalSource as DependencyObject; source is not null && source != IslandSurface;
              source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source))
             if (source is System.Windows.Controls.Primitives.ButtonBase or Slider or Thumb ||
-                source is Controls.MediaPlayerCard or Controls.VolumeCard) return;
+                source is Controls.MediaPlayerCard or Controls.VolumeCard or Views.QuickControlsDashboard or Views.FileShelfDashboard) return;
         _interaction.Click();
         e.Handled = true;
     }
@@ -263,6 +277,7 @@ public partial class MainWindow : Window
     private void UpdateInteractionState()
     {
         var active = IsVisible && !_isClosed && WindowState != WindowState.Minimized;
+        if (!active) EndFileDrag();
         if (!active) _suppressMusicMorphHover = false;
         _interaction.SetActive(active);
     }
@@ -289,20 +304,85 @@ public partial class MainWindow : Window
             _interaction.PointerEntered();
     }
 
+    private void ShelfDrag_Enter(object sender, DragEventArgs e) => ShelfDrag_Over(sender, e);
+    private void ShelfDrag_Over(object sender, DragEventArgs e)
+    {
+        if (Views.QuickControlsDashboard.IsControlDrag(e.Data)) return;
+        e.Handled = true; _fileDragLeave.Stop();
+        if (!WidgetVisible || !_settings.Current.FileShelfTab || !IsInsideSurface(e.GetPosition(this)))
+        { e.Effects = DragDropEffects.None; if (_fileDragActive) ScheduleFileDragLeave(); return; }
+        if (!FileShelfDashboard.CanReceiveFiles(e.Data, e.AllowedEffects))
+        { EndFileDrag(); e.Effects = DragDropEffects.None; return; }
+        if (!_fileDragSeen)
+        {
+            _fileDragSeen = true;
+            if (FileShelfDashboard.CanStageDrag(e.Data, e.AllowedEffects))
+            {
+                _fileDragActive = true;
+                Header.CloseNavigation(); Header.IsHitTestVisible = false;
+                FileShelfDashboard.SetDropTarget(true);
+                IslandSurface.SetResourceReference(Border.BorderBrushProperty, "SurfaceHoverBorder");
+                UpdateInteractionCapture();
+                // Choose the destination before starting the one retained expansion morph.
+                SetExpanded(true); SelectDashboard(Dashboard.FileShelf);
+            }
+        }
+        e.Effects = _fileDragActive && (e.AllowedEffects & DragDropEffects.Copy) != 0
+            ? DragDropEffects.Copy : DragDropEffects.None;
+    }
+    private void ShelfDrag_Leave(object sender, DragEventArgs e)
+    {
+        if (Views.QuickControlsDashboard.IsControlDrag(e.Data)) return;
+        e.Handled = true;
+        // WPF also leaves individual descendants during an OLE drag. A subsequent
+        // enter/over cancels this one-shot grace; cancellation with the cursor still
+        // inside is released too, without a cursor poll or global hook.
+        if (_fileDragSeen) ScheduleFileDragLeave();
+    }
+    private void ScheduleFileDragLeave() { _fileDragLeave.Stop(); _fileDragLeave.Start(); }
+    private async void ShelfDrag_Drop(object sender, DragEventArgs e)
+    {
+        if (Views.QuickControlsDashboard.IsControlDrag(e.Data)) return;
+        ShelfDrag_Over(sender, e);
+        if (e.Effects != DragDropEffects.Copy) { EndFileDrag(); return; }
+        try { await FileShelfDashboard.ReceiveFilesAsync(e.Data, e.AllowedEffects); }
+        finally { EndFileDrag(); }
+    }
+    private void EndFileDrag()
+    {
+        _fileDragLeave?.Stop(); _fileDragSeen = false;
+        if (!_fileDragActive) return;
+        _fileDragActive = false;
+        FileShelfDashboard.SetDropTarget(false); Header.IsHitTestVisible = true;
+        IslandSurface.ClearValue(Border.BorderBrushProperty);
+        UpdateInteractionCapture();
+    }
+
     private void SetExpanded(bool expanded)
     {
         if (_isClosed || _isExpanded == expanded)
             return;
         _isExpanded = expanded;
+        if (!expanded) EndFileDrag();
+        Header.CloseNavigation();
         // The selection resets immediately, but the outgoing header must not change mid-fade.
-        Header.DataContext = expanded ? _viewModel : new { _viewModel.Title, _viewModel.IsSystem, _viewModel.Clock };
-        _viewModel.Dashboard = Dashboard.Main;
+        Header.DataContext = expanded ? _viewModel : new { _viewModel.Title, _viewModel.IsSystem, _viewModel.Clock,
+            _viewModel.IsHome, _viewModel.IsQuickControls, _viewModel.IsFileShelf };
+        _viewModel.Dashboard = expanded && _fileDragActive ? Dashboard.FileShelf : Dashboard.Main;
         PillButton.SetValue(System.Windows.Automation.AutomationProperties.NameProperty,
             _isExpanded ? "Collapse IslandDesk" : "Expand IslandDesk");
 
-        UpdatePresentation();
+        if (expanded && _fileDragActive)
+        {
+            // Resizing a layered HWND inside OLE DragEnter briefly moves its old
+            // alpha bitmap away from the pointer. A queued mouse-up can then miss
+            // the target. Commit selection/interaction now, and let OLE return
+            // before growing the native host. This is one queued update, not polling.
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            { if (!_isClosed) { UpdatePresentation(); UpdateServices(); } }));
+        }
+        else { UpdatePresentation(); UpdateServices(); }
         RaiseWithoutActivation();
-        UpdateServices();
     }
 
     private bool WidgetVisible => IsLoaded && IsVisible && !_isClosed &&
@@ -311,6 +391,7 @@ public partial class MainWindow : Window
     private void UpdateServices()
     {
         _services.SetState(WidgetVisible, _isExpanded, _viewModel.IsSystem, _settings.Current);
+        QuickControlsDashboard.SetActive(WidgetVisible && _isExpanded && _viewModel.IsQuickControls);
         if (WidgetVisible && _isExpanded && _viewModel.IsSystem) _ = _viewModel.Device.EnsureLoadedAsync();
     }
 
@@ -325,8 +406,8 @@ public partial class MainWindow : Window
     {
         _palette.Apply(_settings.Current, _mediaViewModel.ArtworkAccent, !_isExpanded && _mediaViewModel.IsPlaying,
             _settings.EffectiveFrameRate, animate && WidgetVisible,
-            _isExpanded && !_viewModel.IsSystem && _settings.Current.HomeMedia && _settings.Current.MediaTimeline, _isExpanded,
-            _isExpanded && !_viewModel.IsSystem && _settings.Current.HomeVolume);
+            _isExpanded && _viewModel.IsHome && _settings.Current.HomeMedia && _settings.Current.MediaTimeline, _isExpanded,
+            _isExpanded && _viewModel.IsHome && _settings.Current.HomeVolume);
         IslandSurface.Background = _palette.Surface;
     }
     private void Theme_Changed(object? sender, EventArgs e)
@@ -343,6 +424,7 @@ public partial class MainWindow : Window
 
     private void UpdatePresentation(bool animate = true)
     {
+        if (!WidgetVisible) Header.CloseNavigation();
         var music = !_isExpanded && _mediaViewModel.IsPlaying;
         var state = (_isExpanded, music, _viewModel.Dashboard, WidgetVisible, _expandedScale);
         if (_presentationState == state) return;
@@ -355,7 +437,7 @@ public partial class MainWindow : Window
             ? (int)Math.Round((_isExpanded ? _preset.ExpandMilliseconds : _preset.CollapseMilliseconds) / options.AnimationSpeed) : 0;
         var fade = duration == 0 ? 0 : (int)Math.Round(_preset.FadeMilliseconds / options.AnimationSpeed);
         var target = GetHostBounds(new Size(_isExpanded ? ExpandedWidth * _expandedScale : music ? MusicWidth : _clockPillWidth,
-            _isExpanded ? (_viewModel.IsSystem ? options.SystemHeight : options.HomeHeight) * _expandedScale : CollapsedHeight));
+            _isExpanded ? ExpandedHeight * _expandedScale : CollapsedHeight));
         // Grow the transparent host once, animate only render geometry, then trim it.
         // Reversals retain the current visible size and the existing host envelope.
         var gutter = ShadowGutter;
@@ -387,23 +469,25 @@ public partial class MainWindow : Window
         ExpandedContent.IsHitTestVisible = _isExpanded;
         if (_isExpanded || !WidgetVisible)
         {
-            MainDashboard.Visibility = _viewModel.IsSystem ? Visibility.Hidden : Visibility.Visible;
+            MainDashboard.Visibility = _viewModel.IsHome ? Visibility.Visible : Visibility.Hidden;
             SystemDashboard.Visibility = _viewModel.IsSystem ? Visibility.Visible : Visibility.Hidden;
+            QuickControlsDashboard.Visibility = _viewModel.IsQuickControls ? Visibility.Visible : Visibility.Hidden;
+            FileShelfDashboard.Visibility = _viewModel.IsFileShelf ? Visibility.Visible : Visibility.Hidden;
         }
         // Keep the outgoing readings through the fade, then detach hidden bindings.
         if (_isExpanded || !WidgetVisible)
         {
-            MainDashboard.DataContext = WidgetVisible && _isExpanded && !_viewModel.IsSystem ? _viewModel : null;
+            MainDashboard.DataContext = WidgetVisible && _isExpanded && _viewModel.IsHome ? _viewModel : null;
             SystemDashboard.DataContext = WidgetVisible && _isExpanded && _viewModel.IsSystem ? _viewModel : null;
         }
-        _clock.SetVisible(WidgetVisible && (_isExpanded ? (_viewModel.IsSystem || options.HomeClock) : !music),
-            dateVisible: WidgetVisible && _isExpanded && !_viewModel.IsSystem);
+        _clock.SetVisible(WidgetVisible && (_isExpanded ? (!_viewModel.IsHome || options.HomeClock) : !music),
+            dateVisible: WidgetVisible && _isExpanded && _viewModel.IsHome);
         MusicEqualizer.IsRunning = WidgetVisible && music && options.EqualizerEnabled;
         var needsAccent = options.DynamicAccent && (options.PillTint || options.DynamicTimeline || options.DynamicEqualizer);
         var volumeNeedsAccent = options.DynamicVolume && options.HomeVolume;
         var backgroundNeedsAccent = options.DynamicBackground && options.BackgroundTintStrength > 0 && options.BackgroundStyle == IslandBackgroundStyle.CharcoalGradient;
         _mediaViewModel.SetArtworkVisible(WidgetVisible && ((music && (options.MediaArtwork || needsAccent)) ||
-            (_isExpanded && (!_viewModel.IsSystem && (options.HomeMedia && (options.MediaArtwork || needsAccent) || volumeNeedsAccent) || backgroundNeedsAccent))));
+            (_isExpanded && (_viewModel.IsHome && (options.HomeMedia && (options.MediaArtwork || needsAccent) || volumeNeedsAccent) || backgroundNeedsAccent))));
     }
 
     private void ApplyContentOpacity(double pill, double panel)
@@ -424,29 +508,40 @@ public partial class MainWindow : Window
 
     private void SelectDashboard(Dashboard dashboard)
     {
+        if (_fileDragActive && dashboard != Dashboard.FileShelf) return;
         if (!_isExpanded || _viewModel.Dashboard == dashboard || _isClosed) return;
+        if (!Enum.IsDefined(dashboard) || dashboard == Dashboard.QuickControls && !_settings.Current.QuickControlsTab ||
+            dashboard == Dashboard.FileShelf && !_settings.Current.FileShelfTab) return;
         _viewModel.Dashboard = dashboard;
         UpdatePresentation();
         UpdateServices();
     }
 
-    private void UpdateInteractionCapture() =>
-        _interaction.SetInteractionInProgress(_renameWindow is not null || IslandSurface.IsMouseCaptureWithin);
+    private void UpdateInteractionCapture()
+    {
+        if (_isClosed) return;
+        _interaction.SetInteractionInProgress(_renameWindow is not null || Header.IsNavigationOpen ||
+            QuickControlsDashboard.IsInteracting || FileShelfDashboard.IsInteracting || _fileDragActive || IslandSurface.IsMouseCaptureWithin);
+    }
+
+    private double ExpandedHeight => _viewModel.Dashboard switch
+    {
+        Dashboard.System => _settings.Current.SystemHeight,
+        Dashboard.QuickControls => 76 + DashboardLayout.UtilityBodyHeight,
+        Dashboard.FileShelf => 76 + DashboardLayout.ShelfBodyHeight,
+        _ => _settings.Current.HomeHeight
+    };
 
     internal void OpenSettings(bool editTitle = false)
     {
         if (_isClosed) return;
+        Header.CloseNavigation();
         if (_settingsWindow is null)
         {
             _settingsWindow = new(_settings);
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-            _settingsWindow.Show();
         }
-        else
-        {
-            if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
-            _settingsWindow.Show(); _settingsWindow.Activate();
-        }
+        SecondaryWindowActivation.Show(_settingsWindow);
         if (editTitle) _settingsWindow.FocusTitle();
     }
 
@@ -457,6 +552,11 @@ public partial class MainWindow : Window
         var options = _settings.Current;
         var previous = _appliedSettings;
         _appliedSettings = options;
+        Header.ConfigureNavigation(options.QuickControlsTab, options.FileShelfTab);
+        QuickControlsDashboard.ApplyLayoutOrder(options.QuickControlOrder);
+        if (!options.FileShelfTab) EndFileDrag();
+        if (_viewModel.IsQuickControls && !options.QuickControlsTab || _viewModel.IsFileShelf && !options.FileShelfTab)
+            _viewModel.Dashboard = Dashboard.Main;
         _viewModel.Title = PreferencesStore.NormalizeTitle(options.Title);
         if (previous?.ExpansionMode != options.ExpansionMode || previous?.CollapseMode != options.CollapseMode ||
             previous?.CollapseDelayMilliseconds != options.CollapseDelayMilliseconds)
@@ -493,12 +593,14 @@ public partial class MainWindow : Window
         }
         var layoutChanged = previous is null || previous.MediaHeight != options.MediaHeight || previous.HomeClock != options.HomeClock || previous.HomeMedia != options.HomeMedia ||
             previous.HomeVolume != options.HomeVolume || previous.Cpu != options.Cpu || previous.Gpu != options.Gpu ||
-            previous.Ram != options.Ram || previous.Disk != options.Disk || previous.Network != options.Network || previous.Battery != options.Battery;
+            previous.Ram != options.Ram || previous.Disk != options.Disk || previous.Network != options.Network || previous.Battery != options.Battery ||
+            previous.QuickControlsTab != options.QuickControlsTab || previous.FileShelfTab != options.FileShelfTab;
         var clockChanged = previous is null || previous.Use24Hour != options.Use24Hour || previous.ShowSeconds != options.ShowSeconds;
         if (layoutChanged)
         {
             MainDashboard.ApplySettings(options); SystemDashboard.ApplySettings(options);
-            ExpandedContent.Height = 48 + Math.Max(options.HomeBodyHeight, options.SystemBodyHeight);
+            ExpandedContent.Height = 48 + Math.Max(Math.Max(options.HomeBodyHeight, options.SystemBodyHeight),
+                Math.Max(options.QuickControlsTab ? DashboardLayout.UtilityBodyHeight : 0, options.FileShelfTab ? DashboardLayout.ShelfBodyHeight : 0));
         }
         if (clockChanged)
         {
@@ -539,13 +641,16 @@ public partial class MainWindow : Window
     private void ApplyAnimationFrameRate()
     {
         _transitions.ConfigureFrameRate(_settings.EffectiveFrameRate);
+        Header.ConfigureAnimation(_settings.EffectiveFrameRate, _settings.Current.AnimationStyle != TransitionStyle.Instant, _settings.Current.AnimationSpeed);
+        QuickControlsDashboard.ConfigureAnimation(_settings.EffectiveFrameRate, _settings.Current.AnimationStyle != TransitionStyle.Instant, _settings.Current.AnimationSpeed);
         MusicEqualizer.DesiredFrameRate = _settings.EffectiveFrameRate;
         MainDashboard.MediaSection.Timeline.SetFrameRate(_settings.EffectiveFrameRate);
     }
 
     private void RenameTitle()
     {
-        if (_isClosed || _hiddenForFullscreen || _renameWindow is not null) return;
+        if (_isClosed || _hiddenForFullscreen) return;
+        if (_renameWindow is not null) { SecondaryWindowActivation.Show(_renameWindow); return; }
         _renameWindow = new(_viewModel.Title, async title =>
         {
             var normalized = PreferencesStore.NormalizeTitle(title);
@@ -555,7 +660,7 @@ public partial class MainWindow : Window
         _renameWindow.Closed += (_, _) => { _renameWindow = null; _restoreRenameAfterFullscreen = false; UpdateInteractionCapture(); };
         UpdateInteractionCapture();
         // Modeless and separate: WPF modal-owner activation never targets the island.
-        _renameWindow.Show();
+        SecondaryWindowActivation.Show(_renameWindow);
     }
 
     private void FullscreenChanged(bool fullscreen)
@@ -680,6 +785,7 @@ public partial class MainWindow : Window
 
     private void UpdatePlacement()
     {
+        Header.CloseNavigation();
         var handle = new WindowInteropHelper(this).Handle;
         var source = HwndSource.FromHwnd(handle);
         if (source?.CompositionTarget is null)
@@ -703,7 +809,9 @@ public partial class MainWindow : Window
         var toDevice = source.CompositionTarget.TransformToDevice;
         var fromDevice = source.CompositionTarget.TransformFromDevice;
         var area = _settings.Current.UseWorkingArea ? info.Work : info.Monitor;
-        var maxHeight = Math.Max(_settings.Current.HomeHeight, _settings.Current.SystemHeight);
+        var maxHeight = Math.Max(Math.Max(_settings.Current.HomeHeight, _settings.Current.SystemHeight),
+            76 + Math.Max(_settings.Current.QuickControlsTab ? DashboardLayout.UtilityBodyHeight : 0,
+                _settings.Current.FileShelfTab ? DashboardLayout.ShelfBodyHeight : 0));
         var shadow = ShadowGutter;
         var scale = DashboardLayout.ScaleToFit((area.Right - area.Left) / toDevice.M11 - 2 * Math.Max(_edgeMargin, shadow.Width),
             (area.Bottom - area.Top) / toDevice.M22 - 2 * Math.Max(TopMarginPixels / toDevice.M22, shadow.Height), maxHeight);
@@ -728,6 +836,7 @@ public partial class MainWindow : Window
         _settings.UpdateDisplayRefreshRate(MonitorRefreshReader.Read(monitor));
         ApplyAnimationFrameRate();
         ApplyMusicPalette(true);
+        QuickControlsDashboard.MonitorChanged();
         _fullscreenObserver?.RequestCheck();
     }
 
@@ -758,7 +867,8 @@ public partial class MainWindow : Window
             if (IsInsideSurface(PointFromScreen(screen)))
             {
                 var delta = (short)((wParam.ToInt64() >> 16) & 0xFFFF);
-                _volumeViewModel.AdjustFromWheel(delta);
+                if (!QuickControlsDashboard.HandleGridWheel(screen, delta))
+                    _volumeViewModel.AdjustFromWheel(delta);
                 // Consume at our existing HWND hook before a Slider can also handle it.
                 // No global input hook, activation, or duplicate Core Audio service.
                 handled = true;

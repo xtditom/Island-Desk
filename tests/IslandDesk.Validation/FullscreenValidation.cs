@@ -142,7 +142,10 @@ internal static class FullscreenValidation
         var window = new Window { Title = "IslandDesk fullscreen validation provider", Width = 460, Height = 260,
             Content = new TextBlock { Text = "IslandDesk native fullscreen test", Margin = new Thickness(24) } };
         var started = false;
-        window.Loaded += async (_, _) =>
+        var activationStarted = false;
+        TaskCompletionSource? foregroundInput = null;
+        window.PreviewMouseLeftButtonUp += (_, _) => foregroundInput?.TrySetResult();
+        window.ContentRendered += async (_, _) =>
         {
             if (started) return; started = true;
             try
@@ -166,23 +169,70 @@ internal static class FullscreenValidation
                         window.Left = info.Work.Left + 80; window.Top = info.Work.Top + 120; window.Width = 460; window.Height = 260;
                         if (command == "maximized") window.WindowState = WindowState.Maximized;
                     }
-                    window.Activate();
-                    // Test provider only: Windows may deny ordinary background-process
-                    // activation. Briefly join input queues to foreground this controlled
-                    // test window; IslandDesk production code never manipulates focus.
                     var handle = new WindowInteropHelper(window).Handle;
-                    if (GetForegroundWindow() != handle)
+                    if (command.StartsWith("activation-", StringComparison.Ordinal))
                     {
-                        var currentThread = GetCurrentThreadId();
-                        var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
-                        var joined = foregroundThread != 0 && foregroundThread != currentThread && AttachThreadInput(currentThread, foregroundThread, true);
-                        try { SetForegroundWindow(handle); }
-                        finally { if (joined) AttachThreadInput(currentThread, foregroundThread, false); }
+                        // Test-only real click, confined to this owned fixture. Avoid
+                        // joining input queues in activation tests: that can leave
+                        // unrelated queued focus transitions on a modal owner's thread.
+                        window.Activate();
+                        if (!activationStarted && GetForegroundWindow() != handle)
+                        {
+                            // Initial fixture bootstrap only, before any modal exists.
+                            var thread = GetCurrentThreadId(); var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+                            var joined = foregroundThread != 0 && foregroundThread != thread && AttachThreadInput(thread, foregroundThread, true);
+                            try { SetForegroundWindow(handle); }
+                            finally { if (joined) AttachThreadInput(thread, foregroundThread, false); }
+                        }
+                        activationStarted = true;
+                        await Task.Delay(80);
+                        try
+                        {
+                            foregroundInput = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                            var dpiContext = SetThreadDpiAwarenessContext(new nint(-4));
+                            try
+                            {
+                                if (!GetWindowRect(handle, out var rect)) throw new InvalidOperationException("Fixture bounds unavailable.");
+                                var point = new FixturePoint { X = rect.Left + 50, Y = rect.Top + 80 };
+                                var hit = WindowFromPoint(point);
+                                if (hit != handle && GetAncestor(hit, 2) != handle)
+                                {
+                                    GetWindowThreadProcessId(hit, out var hitProcess);
+                                    var root = GetAncestor(hit, 2); GetWindowRect(root, out var rootRect);
+                                    DwmGetWindowAttribute(handle, 14, out var cloaked, sizeof(int));
+                                    throw new InvalidOperationException($"Fixture click is occluded: target=0x{handle:X}, cloaked={cloaked}, foreground=0x{GetForegroundWindow():X}, targetEx=0x{GetWindowLong(handle, -20):X}, hit=0x{hit:X}, root=0x{root:X}, process={Process.GetProcessById((int)hitProcess).ProcessName}, rootEx=0x{GetWindowLong(root, -20):X}, rootRect={rootRect}, rect={rect}, point={point.X},{point.Y}.");
+                                }
+                                if (!SetCursorPos(point.X, point.Y) || SendInput(2,
+                                    [new() { Mouse = new() { Flags = 2 } }, new() { Mouse = new() { Flags = 4 } }], Marshal.SizeOf<FixtureInput>()) != 2)
+                                    throw new InvalidOperationException("Fixture click was blocked.");
+                            }
+                            finally { if (dpiContext != 0) SetThreadDpiAwarenessContext(dpiContext); }
+                            await foregroundInput.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                            foregroundInput = null;
+                        }
+                        finally { foregroundInput = null; }
+                        if (command.StartsWith("activation-allow:", StringComparison.Ordinal) &&
+                            !AllowSetForegroundWindow(uint.Parse(command[17..])))
+                            throw new InvalidOperationException("Test foreground grant failed.");
+                    }
+                    else
+                    {
+                        window.Activate();
+                        // Existing fullscreen fixture setup only; never production.
+                        if (GetForegroundWindow() != handle)
+                        {
+                            var currentThread = GetCurrentThreadId();
+                            var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+                            var joined = foregroundThread != 0 && foregroundThread != currentThread && AttachThreadInput(currentThread, foregroundThread, true);
+                            try { SetForegroundWindow(handle); }
+                            finally { if (joined) AttachThreadInput(currentThread, foregroundThread, false); }
+                        }
                     }
                     Console.WriteLine(new WindowInteropHelper(window).Handle.ToInt64().ToString());
                     if (command == "quit") break;
                 }
             }
+            catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
             finally { window.Close(); app.Shutdown(); }
         };
         window.Show(); app.Run();
@@ -201,9 +251,20 @@ internal static class FullscreenValidation
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] private static extern int GetWindowLong(nint window, int index);
     [DllImport("user32.dll")] private static extern nint MonitorFromWindow(nint window, uint flags);
     [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInformation information);
-    [DllImport("user32.dll")] private static extern bool SetWindowPos(nint window, nint after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(nint window, nint after, int x, int y, int width, int height, uint flags);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out uint process);
     [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint first, uint second, bool attach);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint window);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool AllowSetForegroundWindow(uint process);
+    [StructLayout(LayoutKind.Sequential)] private struct FixtureInput { public uint Type; public FixtureMouse Mouse; }
+    [StructLayout(LayoutKind.Sequential)] private struct FixturePoint { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] private struct FixtureMouse { public int X, Y; public uint Data, Flags, Time; public nuint Extra; }
+    [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, FixtureInput[] inputs, int size);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out PixelRect rect);
+    [DllImport("user32.dll")] private static extern nint WindowFromPoint(FixturePoint point);
+    [DllImport("user32.dll")] private static extern nint GetAncestor(nint window, uint flags);
+    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] private static extern nint SetThreadDpiAwarenessContext(nint context);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(nint window, uint attribute, out int value, int size);
 }
